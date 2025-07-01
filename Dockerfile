@@ -39,10 +39,10 @@ RUN npm ci --only=production && npm cache clean --force
 RUN chown -R nextjs:nodejs /app
 USER nextjs
 
-# Открываем порт
-EXPOSE 3000
+# Открываем порт 80 для домена
+EXPOSE 80
 
-ENV PORT=3000
+ENV PORT=80
 ENV HOSTNAME="0.0.0.0"
 
 # Запускаем приложение

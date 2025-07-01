@@ -98,10 +98,10 @@ MIT License
 
 2. Запустите контейнер:
    ```bash
-   docker run -p 3000:3000 --env-file .env zina-gpt
+   docker run -p 80:80 --env-file .env zina-gpt
    ```
 
-Приложение будет доступно на http://localhost:3000
+Приложение будет доступно на http://localhost (порт 80)
 
 ## Learn More
 
