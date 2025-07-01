@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import AssistantResponse from '../components/AssistantResponse';
+// import AssistantResponse from '../components/AssistantResponse';
 import LoadingSkeleton from '../components/LoadingSkeleton';
 import CategoryBlock from '../components/CategoryBlock';
 import IdeasBlock from '../components/IdeasBlock';

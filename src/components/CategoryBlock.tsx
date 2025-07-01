@@ -16,7 +16,7 @@ function chunkArray<T>(arr: T[], size: number): T[][] {
   return res;
 }
 
-const CategoryBlock: React.FC<CategoryBlockProps> = ({ name, products }) => {
+const CategoryBlock: React.FC<CategoryBlockProps> = ({ name }) => {
   const [open, setOpen] = useState(false);
   // Получаем товары из справочника по названию категории
   const categoryProducts = getProductsByCategory(name);

@@ -11,7 +11,7 @@ interface AssistantResponseProps {
   onSuggestionClick?: (suggestion: string) => void;
 }
 
-const AssistantResponse: React.FC<AssistantResponseProps> = ({ userMessage, text, categories, suggestions, onSuggestionClick }) => {
+const AssistantResponse: React.FC<AssistantResponseProps> = ({ text, categories, suggestions, onSuggestionClick }) => {
   return (
     <div className="w-full max-w-5xl">
       <div className="flex-1 min-h-0 overflow-auto pr-1">
