@@ -1,24 +1,76 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Зина GPT - ИИ-ассистент
 
-## Getting Started
+Современное веб-приложение с ИИ-ассистентом в теплых тонах, созданное на Next.js.
 
-First, run the development server:
+## 🚀 Особенности
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- 🤖 Интеграция с OpenAI GPT-3.5-turbo
+- 🎨 Современный дизайн в теплых оранжево-красных тонах
+- 💬 Чат-интерфейс с реальным временем
+- 📱 Адаптивный дизайн
+- ⚡ Быстрая работа на Next.js 15
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🛠️ Установка и запуск
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. **Клонируйте репозиторий**
+   ```bash
+   git clone <your-repo-url>
+   cd zina-gpt
+   ```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+2. **Установите зависимости**
+   ```bash
+   npm install
+   ```
+
+3. **Настройте переменные окружения**
+   
+   Создайте файл `.env.local` в корне проекта:
+   ```env
+   OPENAI_API_KEY=your_openai_api_key_here
+   ```
+   
+   Получите API ключ на [OpenAI Platform](https://platform.openai.com/api-keys)
+
+4. **Запустите приложение**
+   ```bash
+   npm run dev
+   ```
+
+5. **Откройте браузер**
+   
+   Перейдите по адресу [http://localhost:3000](http://localhost:3000)
+
+## 🎨 Дизайн
+
+Приложение использует:
+- **Цветовая схема**: Теплые оранжево-красные тона
+- **Шрифты**: Geist Sans и Geist Mono
+- **Иконки**: Lucide React
+- **Стилизация**: Tailwind CSS
+
+## 🔧 Технологии
+
+- **Frontend**: Next.js 15, React 19, TypeScript
+- **Стили**: Tailwind CSS 4
+- **ИИ**: OpenAI GPT-3.5-turbo
+- **Иконки**: Lucide React
+
+## 📝 Использование
+
+1. Откройте приложение в браузере
+2. Начните общение с Зиной, написав сообщение
+3. Получайте умные и полезные ответы от ИИ-ассистента
+
+## 🔒 Безопасность
+
+- API ключи хранятся в переменных окружения
+- Все запросы к ИИ проходят через серверную часть
+- Нет прямого доступа к API ключам на клиенте
+
+## 📄 Лицензия
+
+MIT License
 
 ## Learn More
 
@@ -34,3 +86,16 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Запуск в Docker
+
+1. Соберите образ:
+   ```bash
+   docker build -t zina-gpt .
+   ```
+2. Запустите контейнер:
+   ```bash
+   docker run -p 3000:3000 --env-file .env zina-gpt
+   ```
+
+Приложение будет доступно на http://localhost:3000
