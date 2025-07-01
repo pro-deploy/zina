@@ -30,11 +30,11 @@ RUN adduser --system --uid 1001 nextjs
 RUN chown -R nextjs:nodejs /app
 USER nextjs
 
-# Открываем порт 8080 для домена
-EXPOSE 8080
+# Открываем порт 80 для домена
+EXPOSE 80
 
 ENV NODE_ENV=production
-ENV PORT=8080
+ENV PORT=80
 ENV HOSTNAME="0.0.0.0"
 
 # Запускаем приложение
