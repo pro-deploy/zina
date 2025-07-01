@@ -77,10 +77,25 @@ MIT License
 
 ## Запуск в Docker
 
+### Вариант 1: Docker Compose (рекомендуется)
+
+1. Запустите приложение:
+   ```bash
+   docker-compose up -d
+   ```
+
+2. Остановите приложение:
+   ```bash
+   docker-compose down
+   ```
+
+### Вариант 2: Docker напрямую
+
 1. Соберите образ:
    ```bash
    docker build -t zina-gpt .
    ```
+
 2. Запустите контейнер:
    ```bash
    docker run -p 3000:3000 --env-file .env zina-gpt
