@@ -1,11 +1,11 @@
-# Используем официальный Node.js образ с последними патчами безопасности
-FROM node:20-alpine@sha256:674181320f4f94582c6182eaa151bf92c6744d478be0f1b8b8b8b8b8b8b8b8b8
+# Используем Node.js 21-alpine для лучшей безопасности
+FROM node:21-alpine
 
 # Устанавливаем рабочую директорию
 WORKDIR /app
 
 # Обновляем пакеты для безопасности
-RUN apk update && apk upgrade && apk add --no-cache dumb-init
+RUN apk update && apk upgrade
 
 # Копируем package.json и package-lock.json
 COPY package*.json ./
@@ -34,6 +34,5 @@ ENV NODE_ENV=production
 ENV PORT=8080
 ENV HOSTNAME="0.0.0.0"
 
-# Запускаем приложение через dumb-init для лучшей обработки сигналов
-ENTRYPOINT ["dumb-init", "--"]
+# Запускаем приложение
 CMD ["npm", "start"] 
