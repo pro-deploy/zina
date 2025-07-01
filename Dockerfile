@@ -10,14 +10,17 @@ RUN apk update && apk upgrade
 # Копируем package.json и package-lock.json
 COPY package*.json ./
 
-# Устанавливаем зависимости
-RUN npm ci --only=production && npm cache clean --force
+# Устанавливаем все зависимости (включая dev-зависимости для сборки)
+RUN npm ci && npm cache clean --force
 
 # Копируем исходный код
 COPY . .
 
 # Собираем приложение
 RUN npm run build
+
+# Удаляем dev-зависимости после сборки
+RUN npm prune --production
 
 # Создаем пользователя для безопасности
 RUN addgroup --system --gid 1001 nodejs
