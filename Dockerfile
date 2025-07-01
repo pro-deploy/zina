@@ -13,6 +13,9 @@ COPY package*.json ./
 # Устанавливаем все зависимости (включая dev-зависимости для сборки)
 RUN npm ci && npm cache clean --force
 
+ENV PORT=80
+ENV HOSTNAME="0.0.0.0"
+
 # Копируем исходный код
 COPY . .
 
@@ -34,8 +37,6 @@ USER nextjs
 EXPOSE 80
 
 ENV NODE_ENV=production
-ENV PORT=80
-ENV HOSTNAME="0.0.0.0"
 
 # Запускаем приложение
 CMD ["npm", "start"] 
