@@ -25,11 +25,9 @@ RUN chown -R nextjs:nodejs /app
 USER nextjs
 
 # Открываем порт 80 для домена
-EXPOSE 80
+EXPOSE 8080
 
 ENV NODE_ENV=production
-ENV PORT=80
-ENV HOSTNAME="0.0.0.0"
 
 # Запускаем приложение
 CMD ["npm", "start"] 
