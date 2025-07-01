@@ -8,4 +8,12 @@ dist
 Dockerfile
 .dockerignore
 docker-compose.yml
-README.md 
+README.md
+*.md
+.vscode
+.idea
+coverage
+.nyc_output
+.cache
+.DS_Store
+Thumbs.db 
