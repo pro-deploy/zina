@@ -2,19 +2,14 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: 'standalone',
+  experimental: {
+    serverComponentsExternalPackages: ['jsonwebtoken'],
+  },
   images: {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'avatars.mds.yandex.net',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'placehold.co',
-        port: '',
-        pathname: '/**',
+        hostname: '**',
       },
     ],
     dangerouslyAllowSVG: true,

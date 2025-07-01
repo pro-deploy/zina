@@ -21,6 +21,8 @@ FROM node:20-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
+ENV PORT=80
+ENV HOSTNAME="0.0.0.0"
 
 # Создаем пользователя для безопасности
 RUN addgroup --system --gid 1001 nodejs
@@ -41,9 +43,6 @@ USER nextjs
 
 # Открываем порт 80 для домена
 EXPOSE 80
-
-ENV PORT=80
-ENV HOSTNAME="0.0.0.0"
 
 # Запускаем приложение
 CMD ["node", "server.js"] 
