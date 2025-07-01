@@ -7,8 +7,8 @@ WORKDIR /app
 # Копируем package.json и package-lock.json
 COPY package*.json ./
 
-# Устанавливаем зависимости
-RUN npm ci --only=production
+# Устанавливаем ВСЕ зависимости (включая dev для сборки)
+RUN npm ci
 
 # Копируем исходный код
 COPY . .
@@ -30,6 +30,10 @@ RUN adduser --system --uid 1001 nextjs
 COPY --from=base /app/public ./public
 COPY --from=base /app/.next/standalone ./
 COPY --from=base /app/.next/static ./.next/static
+
+# Копируем package.json для установки только продакшен зависимостей
+COPY --from=base /app/package*.json ./
+RUN npm ci --only=production && npm cache clean --force
 
 # Меняем владельца файлов
 RUN chown -R nextjs:nodejs /app
