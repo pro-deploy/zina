@@ -19,6 +19,10 @@ COPY . .
 # Копируем конфигурацию nginx
 COPY nginx.conf /etc/nginx/nginx.conf
 
+# Копируем скрипт запуска
+COPY start.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
 # Собираем приложение
 RUN npm run build
 
@@ -26,9 +30,6 @@ RUN npm run build
 EXPOSE 80
 
 ENV NODE_ENV=production
-
-# Создаем скрипт для запуска nginx и приложения
-RUN echo '#!/bin/sh\nnginx &\nnpm start' > /app/start.sh && chmod +x /app/start.sh
 
 # Запускаем nginx и приложение
 CMD ["/app/start.sh"] 
