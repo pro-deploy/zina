@@ -27,7 +27,7 @@ RUN chmod +x /app/start.sh
 RUN npm run build
 
 # Открываем порт 80 для домена
-EXPOSE 80
+EXPOSE 5000
 
 ENV NODE_ENV=production
 
