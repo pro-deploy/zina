@@ -26,8 +26,8 @@ RUN chmod +x /app/start.sh
 # Собираем приложение
 RUN npm run build
 
-# Открываем порт 80 для домена
-EXPOSE 5000
+# Открываем порт 80 для nginx и порт 3000 для Next.js
+EXPOSE 80 3000
 
 ENV NODE_ENV=production
 
