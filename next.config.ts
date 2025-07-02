@@ -18,7 +18,8 @@ const nextConfig: NextConfig = {
     ],
   },
   devIndicators: {
-    position: 'bottom-right',
+    buildActivity: false,
+    buildActivityPosition: 'bottom-right',
   },
   compress: true,
   poweredByHeader: false,
