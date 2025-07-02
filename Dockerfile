@@ -1,5 +1,5 @@
 # Используем Node.js 21-alpine для лучшей безопасности
-FROM node:21-alpine
+FROM node:20-alpine
 
 # Устанавливаем рабочую директорию
 WORKDIR /app
@@ -13,25 +13,11 @@ COPY package*.json ./
 # Устанавливаем все зависимости (включая dev-зависимости для сборки)
 RUN npm ci && npm cache clean --force
 
-ENV PORT=80
-ENV HOSTNAME="0.0.0.0"
-
 # Копируем исходный код
 COPY . .
 
 # Собираем приложение
 RUN npm run build
-
-# Удаляем dev-зависимости после сборки
-RUN npm prune --production
-
-# Создаем пользователя для безопасности
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
-
-# Меняем владельца файлов
-RUN chown -R nextjs:nodejs /app
-USER nextjs
 
 # Открываем порт 80 для домена
 EXPOSE 80
