@@ -4,7 +4,20 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ['jsonwebtoken'],
   devIndicators: {
     buildActivity: false,
-    buildActivityPosition: 'bottom-right',
+  },
+  onDemandEntries: {
+    maxInactiveAge: 25 * 1000,
+    pagesBufferLength: 2,
+  },
+  webpack: (config, { dev, isServer }) => {
+    if (dev && !isServer) {
+      config.devServer = {
+        ...config.devServer,
+        hot: false,
+        liveReload: false,
+      };
+    }
+    return config;
   },
   images: {
     remotePatterns: [
