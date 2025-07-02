@@ -357,22 +357,22 @@ function HomeContent() {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+    <div className="h-[100dvh] w-full overflow-hidden flex flex-col bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
       {/* Контейнер с адаптивной шириной */}
-      <div className="w-full max-w-[1152px] mx-auto h-full flex flex-col shadow-2xl bg-white/80 backdrop-blur-sm rounded-t-3xl">
+      <div className="w-full max-w-[1152px] mx-auto h-full flex flex-col shadow-2xl bg-white/80 backdrop-blur-sm rounded-t-3xl overflow-hidden">
         {/* История чата */}
-        <div className="flex-1 overflow-y-auto p-2 sm:p-4 space-y-4" ref={chatContainerRef}>
+        <div className="flex-1 overflow-y-auto overflow-x-hidden p-1 sm:p-2 md:p-4 space-y-2 sm:space-y-4" ref={chatContainerRef}>
         {chatHistory.map((message, index) => (
           <div key={index} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`${message.role === 'user' ? 'w-[70%] sm:w-[40%]' : 'w-full'} rounded-2xl px-3 sm:px-4 py-2 ${
+            <div className={`${message.role === 'user' ? 'w-[70%] sm:w-[40%]' : 'w-full'} rounded-2xl px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 overflow-hidden ${
               message.role === 'user' 
                 ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white' 
                 : 'text-gray-800'
             }`}>
-              <div className="text-xs sm:text-sm mb-1 opacity-70">
+              <div className="text-xs mb-1 opacity-70">
                 {message.role === 'user' ? 'Вы' : 'Зина'} • {message.timestamp.toLocaleTimeString()}
               </div>
-              <div className="whitespace-pre-line text-sm sm:text-base">
+              <div className="whitespace-pre-line text-xs sm:text-sm md:text-base">
                 {message.role === 'assistant' ? (
                   <TypewriterText text={message.content} speed={80} />
                 ) : (
@@ -383,7 +383,7 @@ function HomeContent() {
               {message.role === 'assistant' && message.categories && (
                 <div className="mt-3 sm:mt-4">
                   <div className="w-full">
-                    <div className="flex-1 min-h-0 overflow-auto pr-1">
+                    <div className="flex-1 min-h-0 overflow-auto overflow-x-hidden pr-1">
                       {/* Не показываем текст, так как он уже есть в message.content */}
                       {message.categories && message.categories.length > 0 && (
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-6 mb-3">
@@ -423,14 +423,14 @@ function HomeContent() {
       </div>
 
       {/* Форма ввода */}
-      <div className="flex-shrink-0 p-2 sm:p-4 bg-gradient-to-r from-white/95 to-gray-50/95 shadow-lg">
+      <div className="flex-shrink-0 p-1 sm:p-2 md:p-4 bg-gradient-to-r from-white/95 to-gray-50/95 shadow-lg overflow-x-hidden">
         <form
           onSubmit={handleSend}
-          className="w-full bg-white/95 shadow-xl rounded-2xl flex items-center gap-2 sm:gap-3 px-3 sm:px-6 py-3 sm:py-4 border border-gray-200/50"
+          className="w-full min-w-0 bg-white/95 shadow-xl rounded-2xl flex items-center gap-1.5 sm:gap-2 md:gap-3 px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4 border border-gray-200/50"
         >
-          <User className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-500 flex-shrink-0" />
+          <User className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-indigo-500 flex-shrink-0" />
           <input
-            className="flex-1 bg-[#f8fafc] border border-indigo-200 rounded-full px-3 sm:px-4 py-2 text-sm sm:text-base font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-300 placeholder:text-gray-400 shadow"
+            className="flex-1 min-w-0 bg-[#f8fafc] border border-indigo-200 rounded-full px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm md:text-base font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-300 placeholder:text-gray-400 shadow"
             placeholder="Чем вам помочь?"
             value={inputValue}
             onChange={e => setInputValue(e.target.value)}
@@ -443,24 +443,24 @@ function HomeContent() {
           />
           <button
             type="button"
-            className="rounded-full p-1.5 sm:p-2 hover:bg-indigo-100 transition relative"
+            className="rounded-full p-1 sm:p-1.5 md:p-2 hover:bg-indigo-100 transition relative"
             tabIndex={-1}
             aria-label="Корзина"
           >
-            <ShoppingCart className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-500" />
+            <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-indigo-500" />
             {getTotalItems() > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center font-bold">
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 flex items-center justify-center font-bold">
                 {getTotalItems()}
               </span>
             )}
           </button>
           <button
             type="submit"
-            className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-full p-1.5 sm:p-2 font-semibold shadow hover:from-indigo-600 hover:to-purple-600 transition disabled:opacity-50 flex items-center gap-1"
+            className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-full p-1 sm:p-1.5 md:p-2 font-semibold shadow hover:from-indigo-600 hover:to-purple-600 transition disabled:opacity-50 flex items-center gap-1"
             disabled={loading || !inputValue.trim()}
             aria-label="Отправить"
           >
-            <Send className="w-4 h-4 sm:w-5 sm:h-5" />
+            <Send className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5" />
           </button>
         </form>
       </div>
