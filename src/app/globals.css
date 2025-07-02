@@ -26,3 +26,26 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Скрываем все инструменты разработчика Next.js */
+#__next-build-watcher,
+#__next-prerender-indicator,
+.nextjs-toast-errors-parent,
+[data-nextjs-dialog-overlay],
+[data-nextjs-dialog-backdrop],
+[data-nextjs-toast],
+.nextjs-build-indicator,
+.nextjs-error-overlay,
+.nextjs-error-overlay-backdrop {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Скрываем любые оверлеи и индикаторы */
+[class*="nextjs"],
+[class*="__next"],
+[data-nextjs] {
+  display: none !important;
+}

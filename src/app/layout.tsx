@@ -17,6 +17,10 @@ export const metadata: Metadata = {
   description: "Ваш персональный ИИ-ассистент Зина для общения и помощи",
   keywords: ["ИИ", "ассистент", "чат", "помощь"],
   authors: [{ name: "Зина GPT" }],
+  other: {
+    "next-build-indicator": "false",
+    "next-error-overlay": "false",
+  },
 };
 
 export const viewport: Viewport = {
