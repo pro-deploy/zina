@@ -32,7 +32,7 @@ function extractJsonBlock(text: string): unknown {
   if (jsonEnd === -1) return null;
   
   // Извлекаем JSON содержимое
-  let jsonContent = text.substring(jsonStart + 7, jsonEnd).trim();
+  const jsonContent = text.substring(jsonStart + 7, jsonEnd).trim();
   
   try {
     return JSON.parse(jsonContent);
