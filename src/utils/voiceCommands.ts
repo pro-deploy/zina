@@ -1,3 +1,5 @@
+import { Product } from '../types/assistant';
+
 export interface VoiceCommand {
   action: 'open_category' | 'add_to_cart' | 'show_products' | 'close_category';
   target?: string;
@@ -63,7 +65,7 @@ export function parseVoiceCommand(transcript: string): VoiceCommand | null {
   return null;
 }
 
-export function findProductByName(name: string, products: any[]): any | null {
+export function findProductByName(name: string, products: Product[]): Product | null {
   const lowerName = name.toLowerCase();
   
   return products.find(product => 

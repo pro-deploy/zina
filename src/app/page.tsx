@@ -6,13 +6,12 @@ import LoadingSkeleton from '../components/LoadingSkeleton';
 import CategoryBlock from '../components/CategoryBlock';
 import IdeasBlock from '../components/IdeasBlock';
 import TypewriterText from '../components/TypewriterText';
-import AnimatedContent from '../components/AnimatedContent';
 import { CartProvider, useCart } from '../contexts/CartContext';
 import VoiceInput from '../components/VoiceInput';
 import { parseVoiceCommand, findProductByName, VoiceCommand } from '../utils/voiceCommands';
 
 import { AssistantResponseData, Category } from '../types/assistant';
-import { User, ShoppingCart, Mic, Send } from 'lucide-react';
+import { User, ShoppingCart, Send } from 'lucide-react';
 import { getProducts } from '../mock/getProducts';
 
 interface ChatMessage {

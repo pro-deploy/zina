@@ -20,7 +20,6 @@ function chunkArray<T>(arr: T[], size: number): T[][] {
 
 const CategoryBlock: React.FC<CategoryBlockProps> = ({ name, isOpen, onToggle }) => {
   const [open, setOpen] = useState(false);
-  const [isAnimating, setIsAnimating] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
   
   // Используем внешнее управление, если предоставлено
@@ -35,11 +34,7 @@ const CategoryBlock: React.FC<CategoryBlockProps> = ({ name, isOpen, onToggle })
 
   // Анимация при изменении состояния
   useEffect(() => {
-    if (isCategoryOpen) {
-      setIsAnimating(true);
-      // Небольшая задержка для плавного начала анимации
-      setTimeout(() => setIsAnimating(false), 50);
-    }
+    // Анимация будет управляться через CSS transitions
   }, [isCategoryOpen]);
 
   // Получаем товары из справочника по названию категории

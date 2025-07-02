@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Mic, MicOff } from 'lucide-react';
 
 interface VoiceInputProps {
@@ -7,15 +7,27 @@ interface VoiceInputProps {
   disabled?: boolean;
 }
 
+interface SpeechRecognitionErrorEvent extends Event {
+  error: string;
+}
+
 const VoiceInput: React.FC<VoiceInputProps> = ({ onTranscript, onInterimResult, disabled = false }) => {
   const [isListening, setIsListening] = useState(false);
   const [isSupported, setIsSupported] = useState(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
 
+  // Мемоизируем onInterimResult для избежания лишних ререндеров
+  const memoizedOnInterimResult = useCallback((text: string) => {
+    if (onInterimResult) {
+      onInterimResult(text);
+    }
+  }, [onInterimResult]);
+
   useEffect(() => {
     // Проверяем поддержку Web Speech API
     if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
       setIsSupported(true);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
       recognitionRef.current = new SpeechRecognition();
       
@@ -29,7 +41,8 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onTranscript, onInterimResult, 
           setIsListening(true);
         };
 
-        recognition.onresult = (event: any) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        recognition.onresult = function (this: SpeechRecognition, event: any) {
           let finalTranscript = '';
           let interimTranscript = '';
 
@@ -43,8 +56,8 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onTranscript, onInterimResult, 
           }
 
           // Отправляем промежуточные результаты в поле ввода
-          if (onInterimResult && interimTranscript) {
-            onInterimResult(interimTranscript);
+          if (interimTranscript) {
+            memoizedOnInterimResult(interimTranscript);
           }
 
           // Отправляем только финальный результат
@@ -53,7 +66,7 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onTranscript, onInterimResult, 
           }
         };
 
-        recognition.onerror = (event: any) => {
+        recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
           console.error('Speech recognition error:', event.error);
           // Не останавливаем прослушивание при ошибке
         };
@@ -71,7 +84,7 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onTranscript, onInterimResult, 
         };
       }
     }
-  }, [onTranscript]);
+  }, [onTranscript, memoizedOnInterimResult, isListening]);
 
   const toggleListening = () => {
     if (!isSupported || disabled) return;
