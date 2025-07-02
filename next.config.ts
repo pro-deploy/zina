@@ -20,6 +20,7 @@ const nextConfig: NextConfig = {
 
   compress: true,
   poweredByHeader: false,
+  devIndicators: false,
   generateEtags: false,
   async headers() {
     return [
