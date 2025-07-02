@@ -24,20 +24,68 @@ interface ChatMessage {
 
 function extractJsonBlock(text: string): unknown {
   // Ищем блок ```json ... ```
-  const match = text.match(/```json([\s\S]*?)```/);
-  if (match) {
+  const jsonStart = text.indexOf('```json');
+  if (jsonStart === -1) return null;
+  
+  // Ищем конец JSON блока
+  const jsonEnd = text.indexOf('```', jsonStart + 7);
+  if (jsonEnd === -1) return null;
+  
+  // Извлекаем JSON содержимое
+  let jsonContent = text.substring(jsonStart + 7, jsonEnd).trim();
+  
+  try {
+    return JSON.parse(jsonContent);
+  } catch (error) {
+    console.error('JSON parsing error:', error);
+    console.log('JSON content length:', jsonContent.length);
+    console.log('JSON content preview:', jsonContent.substring(0, 500));
+    // Fallback: пробуем вытащить категории вручную
     try {
-      return JSON.parse(match[1]);
-    } catch {
-      return null;
+      // Ищем все объекты категорий
+      const categoryRegex = /\{\s*"name"\s*:\s*"([^"]+)",\s*"products"\s*:\s*\[([\s\S]*?)\]\s*\}/g;
+      const productRegex = /\{\s*"name"\s*:\s*"([^"]+)",\s*"img"\s*:\s*"([^"]*)",\s*"price"\s*:\s*"([^"]+)",\s*"weight"\s*:\s*"([^"]+)",\s*"rating"\s*:\s*([0-9.]+)\s*\}/g;
+      const categories = [];
+      let match;
+      while ((match = categoryRegex.exec(jsonContent)) !== null) {
+        const catName = match[1];
+        const productsRaw = match[2];
+        const products = [];
+        let prodMatch;
+        while ((prodMatch = productRegex.exec(productsRaw)) !== null) {
+          products.push({
+            name: prodMatch[1],
+            img: prodMatch[2],
+            price: prodMatch[3],
+            weight: prodMatch[4],
+            rating: parseFloat(prodMatch[5])
+          });
+        }
+        categories.push({ name: catName, products });
+      }
+      if (categories.length > 0) {
+        return { categories, suggestions: [] };
+      }
+    } catch (fallbackError) {
+      console.error('Fallback JSON extraction error:', fallbackError);
     }
+    return null;
   }
-  return null;
 }
 
 function cleanTextFromJson(text: string): string {
   // Удаляем JSON блок из текста
-  return text.replace(/```json[\s\S]*?```/g, '').trim();
+  const jsonStart = text.indexOf('```json');
+  if (jsonStart === -1) return text.trim();
+  
+  const jsonEnd = text.indexOf('```', jsonStart + 7);
+  if (jsonEnd === -1) return text.trim();
+  
+  // Возвращаем текст до JSON блока и после него
+  const beforeJson = text.substring(0, jsonStart).trim();
+  const afterJson = text.substring(jsonEnd + 3).trim();
+  
+  return (beforeJson + ' ' + afterJson).trim();
 }
 
 function HomeContent() {
@@ -166,10 +214,20 @@ function HomeContent() {
       
       const parsed = extractJsonBlock(data.response);
       console.log('Parsed JSON:', parsed);
+      console.log('Response length:', data.response.length);
+      console.log('Response preview:', data.response.substring(0, 500) + '...');
+      console.log('JSON start position:', data.response.indexOf('```json'));
+      console.log('JSON end position:', data.response.lastIndexOf('```'));
       
       if (parsed && typeof parsed === 'object' && parsed !== null && 'categories' in parsed && 'suggestions' in parsed) {
         const parsedData = parsed as { categories: Category[]; suggestions: string[] };
         console.log('Parsed data:', parsedData);
+        
+        // Проверяем валидность структуры
+        if (!Array.isArray(parsedData.categories) || !Array.isArray(parsedData.suggestions)) {
+          console.error('Invalid JSON structure: categories or suggestions are not arrays');
+          throw new Error('Invalid JSON structure');
+        }
         
         // Используем товары, которые вернула нейросеть, без дополнительной обработки
         console.log('Categories with products from AI:', parsedData.categories);
@@ -191,23 +249,162 @@ function HomeContent() {
           suggestions: parsedData.suggestions,
         });
       } else {
-        console.log('No valid JSON found, treating as informational response');
+        console.log('No valid JSON found, checking for partial JSON...');
         
-        // Если нет JSON, значит это информационный ответ без товаров
-        const assistantMessage: ChatMessage = {
-          role: 'assistant',
-          content: cleanTextFromJson(data.response || 'Нет ответа от ИИ'),
-          timestamp: new Date(),
-          // Не добавляем категории и предложения для информационных ответов
-        };
-        setChatHistory(prev => [...prev, assistantMessage]);
+        // Проверяем, есть ли частичный JSON в ответе
+        const hasJsonStart = data.response.includes('```json');
+        const hasJsonEnd = data.response.includes('```');
         
-        setCurrentResponse({
-          userMessage: userMessage,
-          text: cleanTextFromJson(data.response || 'Нет ответа от ИИ'),
-          categories: [], // Пустой массив категорий
-          suggestions: [], // Пустой массив предложений
-        });
+        if (hasJsonStart && hasJsonEnd) {
+          console.log('Partial JSON detected, trying to extract what we can...');
+          // Пытаемся извлечь то, что можем из частичного JSON
+          const jsonStart = data.response.indexOf('```json');
+          const jsonEnd = data.response.lastIndexOf('```');
+          
+          if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
+            const partialJson = data.response.substring(jsonStart + 7, jsonEnd).trim();
+            console.log('Partial JSON content:', partialJson.substring(0, 200) + '...');
+            
+            // Проверяем, обрезался ли JSON (есть ли незакрытые скобки)
+            const openBraces = (partialJson.match(/\{/g) || []).length;
+            const closeBraces = (partialJson.match(/\}/g) || []).length;
+            const openBrackets = (partialJson.match(/\[/g) || []).length;
+            const closeBrackets = (partialJson.match(/\]/g) || []).length;
+            
+            console.log('JSON structure check:', { openBraces, closeBraces, openBrackets, closeBrackets });
+            
+            // Если JSON обрезался, показываем fallback
+            if (openBraces !== closeBraces || openBrackets !== closeBrackets) {
+              console.log('JSON is truncated, showing fallback products');
+              
+              // Определяем тип запроса для показа релевантных товаров
+              const responseText = data.response.toLowerCase();
+              let fallbackCategories = [];
+              
+              if (responseText.includes('борщ') || responseText.includes('суп')) {
+                fallbackCategories = [
+                  {
+                    name: "Мясо и птица",
+                    products: [
+                      { name: "Говядина", img: "https://placehold.co/120x120?text=Beef", price: "450₽", weight: "0.5 кг", rating: 4.5 },
+                      { name: "Свинина", img: "https://placehold.co/120x120?text=Pork", price: "380₽", weight: "0.5 кг", rating: 4.3 }
+                    ]
+                  },
+                  {
+                    name: "Овощи",
+                    products: [
+                      { name: "Картофель", img: "https://placehold.co/120x120?text=Potato", price: "45₽", weight: "1 кг", rating: 4.7 },
+                      { name: "Морковь", img: "https://placehold.co/120x120?text=Carrot", price: "35₽", weight: "1 кг", rating: 4.5 },
+                      { name: "Лук", img: "https://placehold.co/120x120?text=Onion", price: "25₽", weight: "1 кг", rating: 4.3 },
+                      { name: "Помидоры", img: "https://placehold.co/120x120?text=Tomato", price: "120₽", weight: "1 кг", rating: 4.6 }
+                    ]
+                  },
+                  {
+                    name: "Специи и приправы",
+                    products: [
+                      { name: "Соль", img: "https://placehold.co/120x120?text=Salt", price: "15₽", weight: "1 кг", rating: 4.8 },
+                      { name: "Перец черный", img: "https://placehold.co/120x120?text=Pepper", price: "45₽", weight: "50 г", rating: 4.6 },
+                      { name: "Лавровый лист", img: "https://placehold.co/120x120?text=Bay", price: "25₽", weight: "10 г", rating: 4.4 },
+                      { name: "Чеснок", img: "https://placehold.co/120x120?text=Garlic", price: "55₽", weight: "0.2 кг", rating: 4.5 }
+                    ]
+                  },
+                  {
+                    name: "Зелень",
+                    products: [
+                      { name: "Петрушка", img: "https://placehold.co/120x120?text=Parsley", price: "45₽", weight: "100 г", rating: 4.5 },
+                      { name: "Укроп", img: "https://placehold.co/120x120?text=Dill", price: "35₽", weight: "100 г", rating: 4.4 }
+                    ]
+                  }
+                ];
+              } else {
+                // Общий fallback для других запросов
+                fallbackCategories = [
+                  {
+                    name: "Основные продукты",
+                    products: [
+                      { name: "Яйца куриные", img: "https://placehold.co/120x120?text=Eggs", price: "120₽", weight: "10 шт", rating: 4.6 },
+                      { name: "Мука пшеничная", img: "https://placehold.co/120x120?text=Flour", price: "45₽", weight: "1 кг", rating: 4.6 },
+                      { name: "Молоко", img: "https://placehold.co/120x120?text=Milk", price: "85₽", weight: "1 л", rating: 4.6 }
+                    ]
+                  }
+                ];
+              }
+              
+              const assistantMessage: ChatMessage = {
+                role: 'assistant',
+                content: cleanTextFromJson(data.response || 'Нет ответа от ИИ'),
+                timestamp: new Date(),
+                categories: fallbackCategories,
+                suggestions: ['Добавить специи', 'Украсить зеленью', 'Дополнить сметаной']
+              };
+              setChatHistory(prev => [...prev, assistantMessage]);
+              
+              setCurrentResponse({
+                userMessage: userMessage,
+                text: cleanTextFromJson(data.response || 'Нет ответа от ИИ'),
+                categories: fallbackCategories,
+                suggestions: ['Добавить специи', 'Украсить зеленью', 'Дополнить сметаной']
+              });
+              return;
+            }
+          }
+        }
+        
+        // Проверяем, содержит ли ответ ключевые слова о покупках/приготовлении
+        const responseText = data.response.toLowerCase();
+        const isShoppingRequest = responseText.includes('купить') || 
+                                 responseText.includes('приготовить') || 
+                                 responseText.includes('сделать') || 
+                                 responseText.includes('хочу') ||
+                                 responseText.includes('нужны') ||
+                                 responseText.includes('продукты');
+        
+        if (isShoppingRequest) {
+          console.log('Shopping request detected, showing fallback products');
+          // Показываем базовые категории для запросов о покупках
+          const fallbackCategories = [
+            {
+              name: "Основные продукты",
+              products: [
+                { name: "Яйца куриные", img: "https://placehold.co/120x120?text=Eggs", price: "120₽", weight: "10 шт", rating: 4.6 },
+                { name: "Мука пшеничная", img: "https://placehold.co/120x120?text=Flour", price: "45₽", weight: "1 кг", rating: 4.6 },
+                { name: "Молоко", img: "https://placehold.co/120x120?text=Milk", price: "85₽", weight: "1 л", rating: 4.6 }
+              ]
+            }
+          ];
+          
+          const assistantMessage: ChatMessage = {
+            role: 'assistant',
+            content: cleanTextFromJson(data.response || 'Нет ответа от ИИ'),
+            timestamp: new Date(),
+            categories: fallbackCategories,
+            suggestions: ['Добавить овощи', 'Дополнить специями', 'Украсить зеленью']
+          };
+          setChatHistory(prev => [...prev, assistantMessage]);
+          
+          setCurrentResponse({
+            userMessage: userMessage,
+            text: cleanTextFromJson(data.response || 'Нет ответа от ИИ'),
+            categories: fallbackCategories,
+            suggestions: ['Добавить овощи', 'Дополнить специями', 'Украсить зеленью']
+          });
+        } else {
+          // Если нет JSON, значит это информационный ответ без товаров
+          const assistantMessage: ChatMessage = {
+            role: 'assistant',
+            content: cleanTextFromJson(data.response || 'Нет ответа от ИИ'),
+            timestamp: new Date(),
+            // Не добавляем категории и предложения для информационных ответов
+          };
+          setChatHistory(prev => [...prev, assistantMessage]);
+          
+          setCurrentResponse({
+            userMessage: userMessage,
+            text: cleanTextFromJson(data.response || 'Нет ответа от ИИ'),
+            categories: [], // Пустой массив категорий
+            suggestions: [], // Пустой массив предложений
+          });
+        }
       }
     } catch (error) {
       console.error('Error processing response:', error);
@@ -354,7 +551,7 @@ function HomeContent() {
                 </div>
                 <div className="whitespace-pre-line text-base sm:text-lg leading-relaxed">
                   {message.role === 'assistant' ? (
-                    <TypewriterText text={message.content} speed={30} />
+                    <TypewriterText text={message.content} speed={1} />
                   ) : (
                     message.content
                   )}

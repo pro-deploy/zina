@@ -5,7 +5,7 @@ interface TypewriterTextProps {
   speed?: number;
 }
 
-const TypewriterText: React.FC<TypewriterTextProps> = ({ text, speed = 20 }) => {
+const TypewriterText: React.FC<TypewriterTextProps> = ({ text, speed = 1 }) => {
   const [displayedText, setDisplayedText] = useState('');
   const [currentIndex, setCurrentIndex] = useState(0);
 
