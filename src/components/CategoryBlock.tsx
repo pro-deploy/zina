@@ -28,15 +28,15 @@ const CategoryBlock: React.FC<CategoryBlockProps> = ({ name }) => {
   return (
     <div>
       <button
-        className="w-full flex items-center justify-between text-left font-semibold text-gray-800 py-2 px-2 rounded-lg hover:bg-orange-50 transition"
+        className="w-full flex items-center justify-between text-left bg-gradient-to-r from-white to-orange-50/30 rounded-xl px-3 py-1.5 text-gray-700 text-sm font-medium shadow-sm border border-orange-200/50 hover:shadow-md hover:border-orange-300/60 transition-all duration-200 group"
         onClick={() => setOpen((v) => !v)}
         type="button"
       >
-        <span>{name}</span>
-        <span>{open ? '▴' : '▾'}</span>
+        <span className="font-semibold">{name}</span>
+        <span className="text-orange-400 group-hover:text-orange-500 transition-colors">{open ? '▴' : '▾'}</span>
       </button>
       {open && rows.length > 0 && (
-        <div className="space-y-3 mt-2 mb-2">
+        <div className="space-y-4 mt-3 mb-2">
           {rows.map((row, idx) => (
             <div
               key={idx}

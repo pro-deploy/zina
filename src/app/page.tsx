@@ -5,6 +5,9 @@ import { useState, useRef, useEffect } from 'react';
 import LoadingSkeleton from '../components/LoadingSkeleton';
 import CategoryBlock from '../components/CategoryBlock';
 import IdeasBlock from '../components/IdeasBlock';
+import TypewriterText from '../components/TypewriterText';
+import AnimatedContent from '../components/AnimatedContent';
+import { CartProvider, useCart } from '../contexts/CartContext';
 
 import { AssistantResponseData, Category } from '../types/assistant';
 import { User, ShoppingCart, Mic, Send } from 'lucide-react';
@@ -34,7 +37,9 @@ function cleanTextFromJson(text: string): string {
   return text.replace(/```json[\s\S]*?```/g, '').trim();
 }
 
-export default function Home() {
+function HomeContent() {
+  const { getTotalItems } = useCart();
+  
   // Создаем локальный объект для демо-ответа
   const demoAssistantResponse: AssistantResponseData = {
     userMessage: 'Демо сообщение',
@@ -66,10 +71,21 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [inputValue, setInputValue] = useState('');
 
-  // Автоматическая прокрутка к новым сообщениям
+  // Автоматическая прокрутка к началу последнего сообщения
   useEffect(() => {
     if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+      // Используем setTimeout для гарантии того, что DOM обновился
+      setTimeout(() => {
+        if (chatContainerRef.current) {
+          const container = chatContainerRef.current;
+          const lastMessage = container.lastElementChild;
+          if (lastMessage) {
+            const containerRect = container.getBoundingClientRect();
+            const scrollTop = (lastMessage as HTMLElement).offsetTop - containerRect.height * 0.2; // 20% от высоты контейнера
+            container.scrollTop = Math.max(0, scrollTop);
+          }
+        }
+      }, 100);
     }
   }, [chatHistory, currentResponse, loading]);
 
@@ -246,9 +262,9 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-amber-50 via-orange-50 to-red-50">
+    <div className="h-screen flex flex-col bg-gradient-to-br from-amber-50 via-orange-50 to-red-50">
       {/* История чата */}
-      <div className="flex-1 overflow-auto p-4 space-y-4" ref={chatContainerRef}>
+      <div className="flex-1 overflow-y-auto p-4 space-y-4" ref={chatContainerRef}>
         {chatHistory.map((message, index) => (
           <div key={index} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div className={`max-w-3xl rounded-2xl px-4 py-2 ${
@@ -259,7 +275,13 @@ export default function Home() {
               <div className="text-sm mb-1 opacity-70">
                 {message.role === 'user' ? 'Вы' : 'Зина'} • {message.timestamp.toLocaleTimeString()}
               </div>
-              <div className="whitespace-pre-line">{message.content}</div>
+              <div className="whitespace-pre-line">
+                {message.role === 'assistant' ? (
+                  <TypewriterText text={message.content} speed={80} />
+                ) : (
+                  message.content
+                )}
+              </div>
               {/* Показываем товары и идеи только в последнем сообщении ассистента */}
               {message.role === 'assistant' && index === chatHistory.length - 1 && currentResponse && (
                 <div className="mt-4">
@@ -267,14 +289,16 @@ export default function Home() {
                     <div className="flex-1 min-h-0 overflow-auto pr-1">
                       {/* Не показываем текст, так как он уже есть в message.content */}
                       {currentResponse.categories && currentResponse.categories.length > 0 && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                        <AnimatedContent delay={1000} className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
                           {currentResponse.categories.map((cat) => (
                             <CategoryBlock key={cat.name} {...cat} />
                           ))}
-                        </div>
+                        </AnimatedContent>
                       )}
                       {currentResponse.suggestions && currentResponse.suggestions.length > 0 && (
-                        <IdeasBlock suggestions={currentResponse.suggestions} onSuggestionClick={handleSuggestionClick} />
+                        <AnimatedContent delay={1500}>
+                          <IdeasBlock suggestions={currentResponse.suggestions} onSuggestionClick={handleSuggestionClick} />
+                        </AnimatedContent>
                       )}
                     </div>
                   </div>
@@ -289,7 +313,7 @@ export default function Home() {
       </div>
 
       {/* Форма ввода */}
-      <div className="p-4 bg-white/90 shadow-lg">
+      <div className="flex-shrink-0 p-4 bg-white/90 shadow-lg">
         <form
           onSubmit={handleSend}
           className="w-full max-w-5xl mx-auto bg-white/90 shadow-2xl rounded-2xl flex items-center gap-3 px-6 py-4"
@@ -312,11 +336,16 @@ export default function Home() {
           </button>
           <button
             type="button"
-            className="rounded-full p-2 hover:bg-orange-100 transition"
+            className="rounded-full p-2 hover:bg-orange-100 transition relative"
             tabIndex={-1}
             aria-label="Корзина"
           >
             <ShoppingCart className="w-6 h-6 text-orange-400" />
+            {getTotalItems() > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                {getTotalItems()}
+              </span>
+            )}
           </button>
           <button
             type="submit"
@@ -329,5 +358,13 @@ export default function Home() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <CartProvider>
+      <HomeContent />
+    </CartProvider>
   );
 } 
