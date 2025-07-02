@@ -1,15 +1,23 @@
 import React from 'react';
 
 interface UserMessageChipProps {
-  text: string;
+  message: string;
+  timestamp: Date;
 }
 
-const UserMessageChip: React.FC<UserMessageChipProps> = ({ text }) => (
-  <div className="mb-4 flex justify-end">
-    <div className="bg-gradient-to-r from-[#fbeee6] to-[#ffe5e0] border border-orange-200 rounded-full px-5 py-2 text-base font-medium text-gray-800 shadow-sm">
-      {text}
+const UserMessageChip: React.FC<UserMessageChipProps> = ({ message, timestamp }) => {
+  return (
+    <div className="flex justify-end">
+      <div className="w-[85%] sm:w-[60%] md:w-[40%] rounded-2xl px-3 py-2 sm:px-4 sm:py-3 overflow-hidden bg-gradient-to-r from-indigo-500 to-purple-500 text-white">
+        <div className="text-xs mb-1 opacity-70">
+          Вы • {timestamp.toLocaleTimeString()}
+        </div>
+        <div className="whitespace-pre-line text-base sm:text-lg leading-relaxed">
+          {message}
+        </div>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 export default UserMessageChip; 

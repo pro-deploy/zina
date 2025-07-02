@@ -3,42 +3,38 @@ import React, { useState, useEffect } from 'react';
 interface TypewriterTextProps {
   text: string;
   speed?: number;
-  className?: string;
 }
 
-const TypewriterText: React.FC<TypewriterTextProps> = ({ 
-  text, 
-  speed = 100, 
-  className = "" 
-}) => {
+const TypewriterText: React.FC<TypewriterTextProps> = ({ text, speed = 20 }) => {
   const [displayedText, setDisplayedText] = useState('');
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  // Разбиваем текст на фразы (по предложениям или запятым)
-  const phrases = text.split(/(?<=[.!?])\s+/).filter(phrase => phrase.trim());
+  // Разбиваем текст на слова
+  const words = text.split(' ');
 
   useEffect(() => {
-    if (currentIndex < phrases.length) {
+    if (currentIndex < words.length) {
       const timer = setTimeout(() => {
-        setDisplayedText(prev => prev + (currentIndex > 0 ? ' ' : '') + phrases[currentIndex]);
+        setDisplayedText(prev => 
+          prev + (currentIndex === 0 ? '' : ' ') + words[currentIndex]
+        );
         setCurrentIndex(prev => prev + 1);
       }, speed);
 
       return () => clearTimeout(timer);
     }
-  }, [currentIndex, phrases, speed]);
+  }, [currentIndex, words, speed]);
 
-  // Сброс при изменении текста
   useEffect(() => {
     setDisplayedText('');
     setCurrentIndex(0);
   }, [text]);
 
   return (
-    <span className={className}>
+    <span className="text-base sm:text-lg leading-relaxed">
       {displayedText}
-      {currentIndex < phrases.length && (
-        <span className="animate-pulse text-orange-400">|</span>
+      {currentIndex < words.length && (
+        <span className="animate-pulse">|</span>
       )}
     </span>
   );

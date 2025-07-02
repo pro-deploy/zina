@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 
 interface AnimatedContentProps {
   children: React.ReactNode;
@@ -11,23 +11,47 @@ const AnimatedContent: React.FC<AnimatedContentProps> = ({
   delay = 0, 
   className = "" 
 }) => {
-  const [isVisible, setIsVisible] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsVisible(true);
-    }, delay);
+    const currentRef = ref.current;
+    
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setTimeout(() => {
+            if (currentRef) {
+              currentRef.style.opacity = '1';
+              currentRef.style.transform = 'translateY(0)';
+            }
+          }, delay);
+        }
+      },
+      {
+        threshold: 0.1,
+        rootMargin: '50px'
+      }
+    );
 
-    return () => clearTimeout(timer);
+    if (currentRef) {
+      observer.observe(currentRef);
+    }
+
+    return () => {
+      if (currentRef) {
+        observer.unobserve(currentRef);
+      }
+    };
   }, [delay]);
 
   return (
-    <div 
-      className={`transition-all duration-500 ease-out ${
-        isVisible 
-          ? 'opacity-100 translate-y-0' 
-          : 'opacity-0 translate-y-4'
-      } ${className}`}
+    <div
+      ref={ref}
+      className={`transition-all duration-700 ease-out opacity-0 translate-y-8 ${className}`}
+      style={{
+        transformOrigin: 'top',
+        transitionDelay: `${delay}ms`
+      }}
     >
       {children}
     </div>

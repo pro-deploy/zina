@@ -107,12 +107,12 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onTranscript, onInterimResult, 
     return (
       <button
         type="button"
-        className="rounded-full p-2 hover:bg-orange-100 transition opacity-50 cursor-not-allowed"
+        className="rounded-full p-1.5 sm:p-2 hover:bg-indigo-100 transition opacity-50 cursor-not-allowed flex-shrink-0"
         tabIndex={-1}
         aria-label="Диктовка не поддерживается"
         disabled
       >
-        <Mic className="w-6 h-6 text-orange-400" />
+        <Mic className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-indigo-400" />
       </button>
     );
   }
@@ -120,10 +120,10 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onTranscript, onInterimResult, 
   return (
     <button
       type="button"
-      className={`rounded-full p-2 transition ${
+      className={`rounded-full p-1.5 sm:p-2 transition flex-shrink-0 ${
         isListening 
           ? 'bg-red-500 hover:bg-red-600' 
-          : 'hover:bg-orange-100'
+          : 'hover:bg-indigo-100'
       } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
       onClick={toggleListening}
       disabled={disabled}
@@ -132,11 +132,11 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onTranscript, onInterimResult, 
     >
       {isListening ? (
         <div className="relative">
-          <MicOff className="w-6 h-6 text-white" />
-          <div className="absolute -top-1 -right-1 w-3 h-3 bg-white rounded-full animate-pulse"></div>
+          <MicOff className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-white" />
+          <div className="absolute -top-1 -right-1 w-2 h-2 sm:w-3 sm:h-3 bg-white rounded-full animate-pulse"></div>
         </div>
       ) : (
-        <Mic className="w-6 h-6 text-orange-400" />
+        <Mic className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-indigo-400" />
       )}
     </button>
   );

@@ -6,13 +6,13 @@ import LoadingSkeleton from '../components/LoadingSkeleton';
 import CategoryBlock from '../components/CategoryBlock';
 import IdeasBlock from '../components/IdeasBlock';
 import TypewriterText from '../components/TypewriterText';
+import MobileNav from '../components/MobileNav';
 import { CartProvider, useCart } from '../contexts/CartContext';
 import VoiceInput from '../components/VoiceInput';
 import { parseVoiceCommand, findProductByName, VoiceCommand } from '../utils/voiceCommands';
 
-import { AssistantResponseData, Category } from '../types/assistant';
+import { Category, AssistantResponseData } from '../types/assistant';
 import { User, ShoppingCart, Send } from 'lucide-react';
-import { getProducts } from '../mock/getProducts';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -43,31 +43,9 @@ function cleanTextFromJson(text: string): string {
 function HomeContent() {
   const { getTotalItems, addToCart } = useCart();
   const [openCategories, setOpenCategories] = useState<Set<string>>(new Set());
+  const [isListening, setIsListening] = useState(false);
   
-  // Создаем локальный объект для демо-ответа
-  const demoAssistantResponse: AssistantResponseData = {
-    userMessage: 'Демо сообщение',
-    text: 'Это демо-ответ ассистента',
-    categories: [
-      {
-        name: 'Мясо и птица',
-        products: getProducts(),
-      },
-      {
-        name: 'Овощи',
-        products: getProducts(),
-      },
-      {
-        name: 'Молочные продукты',
-        products: getProducts(),
-      }
-    ],
-    suggestions: [
-      'Посоветуйте рецепт на ужин',
-      'Какие продукты сейчас в акции?',
-      'Как правильно хранить свежие овощи?'
-    ],
-  };
+
   
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
@@ -124,7 +102,7 @@ function HomeContent() {
       case 'add_to_cart':
         if (command.target) {
           // Ищем товар во всех открытых категориях
-          const allProducts = currentResponse?.categories?.flatMap(cat => cat.products) || [];
+          const allProducts = currentResponse?.categories?.flatMap((cat: Category) => cat.products) || [];
           const product = findProductByName(command.target, allProducts);
           
           if (product) {
@@ -137,7 +115,7 @@ function HomeContent() {
       case 'show_products':
         // Открываем все категории
         if (currentResponse?.categories) {
-          setOpenCategories(new Set(currentResponse.categories.map(cat => cat.name)));
+          setOpenCategories(new Set(currentResponse.categories.map((cat: Category) => cat.name)));
         }
         break;
     }
@@ -146,6 +124,10 @@ function HomeContent() {
   const handleInterimVoiceInput = (transcript: string) => {
     // Показываем промежуточные результаты в поле ввода
     setInputValue(transcript);
+  };
+
+  const handleVoiceToggle = () => {
+    setIsListening(!isListening);
   };
 
   const handleSendMessage = async (message: string) => {
@@ -189,20 +171,15 @@ function HomeContent() {
         const parsedData = parsed as { categories: Category[]; suggestions: string[] };
         console.log('Parsed data:', parsedData);
         
-        const categoriesWithProducts = parsedData.categories.map((cat: Category) => ({
-          ...cat,
-          // Всегда добавляем товары, игнорируя что возвращает нейросеть в products
-          products: getProducts(),
-        }));
-        
-        console.log('Categories with products:', categoriesWithProducts);
+        // Используем товары, которые вернула нейросеть, без дополнительной обработки
+        console.log('Categories with products from AI:', parsedData.categories);
         
         // Добавляем ответ ассистента в историю чата с товарами
         const assistantMessage: ChatMessage = {
           role: 'assistant',
           content: cleanTextFromJson(data.response),
           timestamp: new Date(),
-          categories: categoriesWithProducts,
+          categories: parsedData.categories,
           suggestions: parsedData.suggestions,
         };
         setChatHistory(prev => [...prev, assistantMessage]);
@@ -210,26 +187,26 @@ function HomeContent() {
         setCurrentResponse({
           userMessage: userMessage,
           text: cleanTextFromJson(data.response),
-          categories: categoriesWithProducts,
+          categories: parsedData.categories,
           suggestions: parsedData.suggestions,
         });
       } else {
-        console.log('No valid JSON found, using demo response');
+        console.log('No valid JSON found, treating as informational response');
         
-        // Добавляем ответ ассистента в историю чата с демо-товарами
+        // Если нет JSON, значит это информационный ответ без товаров
         const assistantMessage: ChatMessage = {
           role: 'assistant',
           content: cleanTextFromJson(data.response || 'Нет ответа от ИИ'),
           timestamp: new Date(),
-          categories: demoAssistantResponse.categories,
-          suggestions: demoAssistantResponse.suggestions,
+          // Не добавляем категории и предложения для информационных ответов
         };
         setChatHistory(prev => [...prev, assistantMessage]);
         
         setCurrentResponse({
-          ...demoAssistantResponse,
           userMessage: userMessage,
           text: cleanTextFromJson(data.response || 'Нет ответа от ИИ'),
+          categories: [], // Пустой массив категорий
+          suggestions: [], // Пустой массив предложений
         });
       }
     } catch (error) {
@@ -240,15 +217,16 @@ function HomeContent() {
         role: 'assistant',
         content: 'Ошибка при обращении к ИИ',
         timestamp: new Date(),
-        categories: demoAssistantResponse.categories,
-        suggestions: demoAssistantResponse.suggestions,
+        categories: [], // Пустой массив категорий
+        suggestions: [], // Пустой массив предложений
       };
       setChatHistory(prev => [...prev, errorMessage]);
       
       setCurrentResponse({
-        ...demoAssistantResponse,
         userMessage: userMessage,
         text: 'Ошибка при обращении к ИИ',
+        categories: [], // Пустой массив категорий
+        suggestions: [], // Пустой массив предложений
       });
     } finally {
       setInputValue('');
@@ -258,9 +236,11 @@ function HomeContent() {
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputValue.trim()) return;
+    if (!inputValue.trim() || loading) return;
     
-    await handleSendMessage(inputValue);
+    const message = inputValue;
+    setInputValue('');
+    await handleSendMessage(message);
   };
 
   // Обработка клика по идее
@@ -295,17 +275,15 @@ function HomeContent() {
       
       if (parsed && typeof parsed === 'object' && parsed !== null && 'categories' in parsed && 'suggestions' in parsed) {
         const parsedData = parsed as { categories: Category[]; suggestions: string[] };
-        const categoriesWithProducts = parsedData.categories.map((cat: Category) => ({
-          ...cat,
-          products: getProducts(),
-        }));
+        
+        // Используем товары, которые вернула нейросеть, без дополнительной обработки
         
         // Добавляем ответ ассистента в историю чата с товарами
         const assistantMessage: ChatMessage = {
           role: 'assistant',
           content: cleanTextFromJson(data.response),
           timestamp: new Date(),
-          categories: categoriesWithProducts,
+          categories: parsedData.categories,
           suggestions: parsedData.suggestions,
         };
         setChatHistory(prev => [...prev, assistantMessage]);
@@ -313,7 +291,7 @@ function HomeContent() {
         setCurrentResponse({
           userMessage: userMessage,
           text: cleanTextFromJson(data.response),
-          categories: categoriesWithProducts,
+          categories: parsedData.categories,
           suggestions: parsedData.suggestions,
         });
       } else {
@@ -322,15 +300,16 @@ function HomeContent() {
           role: 'assistant',
           content: cleanTextFromJson(data.response || 'Нет ответа от ИИ'),
           timestamp: new Date(),
-          categories: demoAssistantResponse.categories,
-          suggestions: demoAssistantResponse.suggestions,
+          categories: [], // Пустой массив вместо demoAssistantResponse.categories
+          suggestions: [], // Пустой массив вместо demoAssistantResponse.suggestions
         };
         setChatHistory(prev => [...prev, assistantMessage]);
         
         setCurrentResponse({
-          ...demoAssistantResponse,
           userMessage: userMessage,
           text: cleanTextFromJson(data.response || 'Нет ответа от ИИ'),
+          categories: [], // Пустой массив вместо demoAssistantResponse.categories
+          suggestions: [], // Пустой массив вместо demoAssistantResponse.suggestions
         });
       }
     } catch (error) {
@@ -341,15 +320,16 @@ function HomeContent() {
         role: 'assistant',
         content: 'Ошибка при обращении к ИИ',
         timestamp: new Date(),
-        categories: demoAssistantResponse.categories,
-        suggestions: demoAssistantResponse.suggestions,
+        categories: [], // Пустой массив вместо demoAssistantResponse.categories
+        suggestions: [], // Пустой массив вместо demoAssistantResponse.suggestions
       };
       setChatHistory(prev => [...prev, errorMessage]);
       
       setCurrentResponse({
-        ...demoAssistantResponse,
         userMessage: userMessage,
         text: 'Ошибка при обращении к ИИ',
+        categories: [], // Пустой массив вместо demoAssistantResponse.categories
+        suggestions: [], // Пустой массив вместо demoAssistantResponse.suggestions
       });
     } finally {
       setLoading(false);
@@ -358,113 +338,123 @@ function HomeContent() {
 
   return (
     <div className="h-[100dvh] w-full overflow-hidden flex flex-col bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-      {/* Контейнер с адаптивной шириной */}
+      {/* Основной контейнер */}
       <div className="w-full max-w-[1152px] mx-auto h-full flex flex-col shadow-2xl bg-white/80 backdrop-blur-sm rounded-t-3xl overflow-hidden">
         {/* История чата */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden p-1 sm:p-2 md:p-4 space-y-2 sm:space-y-4" ref={chatContainerRef}>
-        {chatHistory.map((message, index) => (
-          <div key={index} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`${message.role === 'user' ? 'w-[70%] sm:w-[40%]' : 'w-full'} rounded-2xl px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 overflow-hidden ${
-              message.role === 'user' 
-                ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white' 
-                : 'text-gray-800'
-            }`}>
-              <div className="text-xs mb-1 opacity-70">
-                {message.role === 'user' ? 'Вы' : 'Зина'} • {message.timestamp.toLocaleTimeString()}
-              </div>
-              <div className="whitespace-pre-line text-xs sm:text-sm md:text-base">
-                {message.role === 'assistant' ? (
-                  <TypewriterText text={message.content} speed={80} />
-                ) : (
-                  message.content
-                )}
-              </div>
-              {/* Показываем товары и идеи из истории сообщений */}
-              {message.role === 'assistant' && message.categories && (
-                <div className="mt-3 sm:mt-4">
-                  <div className="w-full">
-                    <div className="flex-1 min-h-0 overflow-auto overflow-x-hidden pr-1">
-                      {/* Не показываем текст, так как он уже есть в message.content */}
-                      {message.categories && message.categories.length > 0 && (
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-6 mb-3">
-                          {message.categories.map((cat) => (
-                            <CategoryBlock 
-                              key={cat.name} 
-                              {...cat} 
-                              isOpen={openCategories.has(cat.name)}
-                              onToggle={(isOpen) => {
-                                setOpenCategories(prev => {
-                                  const newSet = new Set(prev);
-                                  if (isOpen) {
-                                    newSet.add(cat.name);
-                                  } else {
-                                    newSet.delete(cat.name);
-                                  }
-                                  return newSet;
-                                });
-                              }}
-                            />
-                          ))}
-                        </div>
-                      )}
-                      {message.suggestions && message.suggestions.length > 0 && (
-                        <IdeasBlock suggestions={message.suggestions} onSuggestionClick={handleSuggestionClick} isVisible={true} />
-                      )}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-2 py-2 sm:px-4 sm:py-4 space-y-3 pb-20 lg:pb-4" ref={chatContainerRef}>
+          {chatHistory.map((message, index) => (
+            <div key={index} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div className={`${message.role === 'user' ? 'w-[85%] sm:w-[60%] md:w-[40%]' : 'w-full'} rounded-2xl px-3 py-2 sm:px-4 sm:py-3 overflow-hidden ${
+                message.role === 'user' 
+                  ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white' 
+                  : 'text-gray-800'
+              }`}>
+                <div className="text-xs mb-1 opacity-70">
+                  {message.role === 'user' ? 'Вы' : 'Зина'} • {message.timestamp.toLocaleTimeString()}
+                </div>
+                <div className="whitespace-pre-line text-base sm:text-lg leading-relaxed">
+                  {message.role === 'assistant' ? (
+                    <TypewriterText text={message.content} speed={30} />
+                  ) : (
+                    message.content
+                  )}
+                </div>
+                {/* Показываем товары и идеи из истории сообщений */}
+                {message.role === 'assistant' && message.categories && (
+                  <div className="mt-3 sm:mt-4">
+                    <div className="w-full">
+                      <div className="flex-1 min-h-0 overflow-auto overflow-x-hidden">
+                        {/* Не показываем текст, так как он уже есть в message.content */}
+                        {message.categories && message.categories.length > 0 && (
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 mb-3">
+                            {message.categories.map((cat) => (
+                              <CategoryBlock 
+                                key={cat.name} 
+                                {...cat} 
+                                isOpen={openCategories.has(cat.name)}
+                                onToggle={(isOpen) => {
+                                  setOpenCategories(prev => {
+                                    const newSet = new Set(prev);
+                                    if (isOpen) {
+                                      newSet.add(cat.name);
+                                    } else {
+                                      newSet.delete(cat.name);
+                                    }
+                                    return newSet;
+                                  });
+                                }}
+                              />
+                            ))}
+                          </div>
+                        )}
+                        {message.suggestions && message.suggestions.length > 0 && (
+                          <IdeasBlock suggestions={message.suggestions} onSuggestionClick={handleSuggestionClick} isVisible={true} />
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
-          </div>
-        ))}
-        
-        {/* Индикатор загрузки */}
-        {loading && <LoadingSkeleton />}
+          ))}
+          
+          {/* Индикатор загрузки */}
+          {loading && <LoadingSkeleton />}
+        </div>
+
+        {/* Форма ввода - скрыта на мобильных */}
+        <div className="hidden lg:block flex-shrink-0 px-2 py-2 sm:px-4 sm:py-3 bg-gradient-to-r from-white/95 to-gray-50/95 shadow-lg overflow-x-hidden">
+          <form
+            onSubmit={handleSend}
+            className="w-full min-w-0 bg-white/95 shadow-xl rounded-2xl flex items-center gap-2 sm:gap-3 px-3 sm:px-4 md:px-6 py-2 sm:py-3 md:py-4 border border-gray-200/50"
+          >
+            <User className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-indigo-500 flex-shrink-0" />
+            <input
+              className="flex-1 min-w-0 bg-[#f8fafc] border border-indigo-200 rounded-full px-3 sm:px-4 py-2 text-base sm:text-lg font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-300 placeholder:text-gray-400 shadow"
+              placeholder="Чем вам помочь?"
+              value={inputValue}
+              onChange={e => setInputValue(e.target.value)}
+              disabled={loading}
+            />
+            <VoiceInput 
+              onTranscript={handleVoiceInput}
+              onInterimResult={handleInterimVoiceInput}
+              disabled={loading}
+            />
+            <button
+              type="button"
+              className="rounded-full p-1.5 sm:p-2 hover:bg-indigo-100 transition relative flex-shrink-0"
+              tabIndex={-1}
+              aria-label="Корзина"
+            >
+              <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-indigo-500" />
+              {getTotalItems() > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center font-bold">
+                  {getTotalItems()}
+                </span>
+              )}
+            </button>
+            <button
+              type="submit"
+              className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-full p-1.5 sm:p-2 font-semibold shadow hover:from-indigo-600 hover:to-purple-600 transition disabled:opacity-50 flex items-center gap-1 flex-shrink-0"
+              disabled={loading || !inputValue.trim()}
+              aria-label="Отправить"
+            >
+              <Send className="w-4 h-4 sm:w-5 sm:h-5" />
+            </button>
+          </form>
+        </div>
       </div>
 
-      {/* Форма ввода */}
-      <div className="flex-shrink-0 p-1 sm:p-2 md:p-4 bg-gradient-to-r from-white/95 to-gray-50/95 shadow-lg overflow-x-hidden">
-        <form
-          onSubmit={handleSend}
-          className="w-full min-w-0 bg-white/95 shadow-xl rounded-2xl flex items-center gap-1.5 sm:gap-2 md:gap-3 px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4 border border-gray-200/50"
-        >
-          <User className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-indigo-500 flex-shrink-0" />
-          <input
-            className="flex-1 min-w-0 bg-[#f8fafc] border border-indigo-200 rounded-full px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm md:text-base font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-300 placeholder:text-gray-400 shadow"
-            placeholder="Чем вам помочь?"
-            value={inputValue}
-            onChange={e => setInputValue(e.target.value)}
-            disabled={loading}
-          />
-          <VoiceInput 
-            onTranscript={handleVoiceInput}
-            onInterimResult={handleInterimVoiceInput}
-            disabled={loading}
-          />
-          <button
-            type="button"
-            className="rounded-full p-1 sm:p-1.5 md:p-2 hover:bg-indigo-100 transition relative"
-            tabIndex={-1}
-            aria-label="Корзина"
-          >
-            <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-indigo-500" />
-            {getTotalItems() > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 flex items-center justify-center font-bold">
-                {getTotalItems()}
-              </span>
-            )}
-          </button>
-          <button
-            type="submit"
-            className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-full p-1 sm:p-1.5 md:p-2 font-semibold shadow hover:from-indigo-600 hover:to-purple-600 transition disabled:opacity-50 flex items-center gap-1"
-            disabled={loading || !inputValue.trim()}
-            aria-label="Отправить"
-          >
-            <Send className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5" />
-          </button>
-        </form>
-      </div>
-      </div>
+      {/* Мобильная навигация */}
+      <MobileNav
+        onVoiceToggle={handleVoiceToggle}
+        onSend={() => handleSendMessage(inputValue)}
+        onInputChange={setInputValue}
+        inputValue={inputValue}
+        isListening={isListening}
+        disabled={loading}
+      />
     </div>
   );
 }

@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import ProductCard from './ProductCard';
 import { Product } from '../types/assistant';
-import { getProductsByCategory } from '../mock/categoryDictionary';
 
 interface CategoryBlockProps {
   name: string;
@@ -18,7 +17,7 @@ function chunkArray<T>(arr: T[], size: number): T[][] {
   return res;
 }
 
-const CategoryBlock: React.FC<CategoryBlockProps> = ({ name, isOpen, onToggle }) => {
+const CategoryBlock: React.FC<CategoryBlockProps> = ({ name, products, isOpen, onToggle }) => {
   const [open, setOpen] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
   
@@ -37,21 +36,19 @@ const CategoryBlock: React.FC<CategoryBlockProps> = ({ name, isOpen, onToggle })
     // Анимация будет управляться через CSS transitions
   }, [isCategoryOpen]);
 
-  // Получаем товары из справочника по названию категории
-  const categoryProducts = getProductsByCategory(name);
-  // Ограничиваем максимум 30 товаров
-  const limitedProducts = categoryProducts.slice(0, 30);
+  // Используем переданные товары
+  const limitedProducts = products.slice(0, 30);
   // Делим на ряды по 10
   const rows = chunkArray(limitedProducts, 10);
 
   return (
     <div className="overflow-hidden">
       <button
-        className="w-full flex items-center justify-between text-left bg-gradient-to-r from-white to-indigo-50/30 rounded-xl px-3 py-1.5 text-gray-700 text-sm font-medium shadow-sm border border-indigo-200/50 hover:shadow-md hover:border-indigo-300/60 transition-all duration-300 group relative z-10"
+        className="w-full flex items-center justify-between text-left bg-gradient-to-r from-white to-indigo-50/30 rounded-xl px-3 py-2 sm:px-4 sm:py-2.5 text-gray-700 text-sm font-medium shadow-sm border border-indigo-200/50 hover:shadow-md hover:border-indigo-300/60 transition-all duration-300 group relative z-10"
         onClick={() => setIsCategoryOpen(!isCategoryOpen)}
         type="button"
       >
-        <span className="font-semibold">{name}</span>
+        <span className="font-semibold text-sm sm:text-base">{name}</span>
         <span className={`text-indigo-400 group-hover:text-indigo-500 transition-all duration-300 transform ${isCategoryOpen ? 'rotate-180' : 'rotate-0'}`}>
           ▾
         </span>
@@ -70,11 +67,11 @@ const CategoryBlock: React.FC<CategoryBlockProps> = ({ name, isOpen, onToggle })
         }}
       >
         {rows.length > 0 && (
-          <div className="space-y-4 mt-3 mb-2">
+          <div className="space-y-3 sm:space-y-4 mt-3 mb-2">
             {rows.map((row, rowIdx) => (
               <div
                 key={rowIdx}
-                className={`flex flex-nowrap gap-3 overflow-x-auto pb-2 transition-all duration-700 ease-out ${
+                className={`flex flex-nowrap gap-2 sm:gap-3 overflow-x-auto pb-2 transition-all duration-700 ease-out ${
                   isCategoryOpen 
                     ? 'opacity-100 translate-y-0' 
                     : 'opacity-0 translate-y-8'
@@ -87,7 +84,7 @@ const CategoryBlock: React.FC<CategoryBlockProps> = ({ name, isOpen, onToggle })
                 {row.map((prod, prodIdx) => (
                   <div
                     key={prod.name}
-                    className={`transition-all duration-500 ease-out ${
+                    className={`transition-all duration-500 ease-out flex-shrink-0 ${
                       isCategoryOpen 
                         ? 'opacity-100 scale-100 translate-y-0' 
                         : 'opacity-0 scale-95 translate-y-4'
