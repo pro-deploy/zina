@@ -8,6 +8,8 @@ import IdeasBlock from '../components/IdeasBlock';
 import TypewriterText from '../components/TypewriterText';
 import AnimatedContent from '../components/AnimatedContent';
 import { CartProvider, useCart } from '../contexts/CartContext';
+import VoiceInput from '../components/VoiceInput';
+import { parseVoiceCommand, findProductByName, VoiceCommand } from '../utils/voiceCommands';
 
 import { AssistantResponseData, Category } from '../types/assistant';
 import { User, ShoppingCart, Mic, Send } from 'lucide-react';
@@ -17,6 +19,8 @@ interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  categories?: Category[];
+  suggestions?: string[];
 }
 
 function extractJsonBlock(text: string): unknown {
@@ -38,7 +42,8 @@ function cleanTextFromJson(text: string): string {
 }
 
 function HomeContent() {
-  const { getTotalItems } = useCart();
+  const { getTotalItems, addToCart } = useCart();
+  const [openCategories, setOpenCategories] = useState<Set<string>>(new Set());
   
   // Создаем локальный объект для демо-ответа
   const demoAssistantResponse: AssistantResponseData = {
@@ -89,11 +94,65 @@ function HomeContent() {
     }
   }, [chatHistory, currentResponse, loading]);
 
-  const handleSend = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inputValue.trim()) return;
+  const handleVoiceInput = (transcript: string) => {
+    // Сначала проверяем, не является ли это голосовой командой
+    const command = parseVoiceCommand(transcript);
     
-    const userMessage = inputValue.trim();
+    if (command) {
+      handleVoiceCommand(command);
+    } else {
+      // Если это не команда, отправляем как обычное сообщение
+      setTimeout(() => {
+        handleSendMessage(transcript);
+      }, 2000);
+    }
+  };
+
+  const handleVoiceCommand = (command: VoiceCommand) => {
+    console.log('Voice command:', command);
+    
+    switch (command.action) {
+      case 'open_category':
+        if (command.target) {
+          setOpenCategories(prev => new Set([...prev, command.target!]));
+        }
+        break;
+        
+      case 'close_category':
+        setOpenCategories(new Set());
+        break;
+        
+      case 'add_to_cart':
+        if (command.target) {
+          // Ищем товар во всех открытых категориях
+          const allProducts = currentResponse?.categories?.flatMap(cat => cat.products) || [];
+          const product = findProductByName(command.target, allProducts);
+          
+          if (product) {
+            addToCart(product);
+            console.log(`Added ${product.name} to cart`);
+          }
+        }
+        break;
+        
+      case 'show_products':
+        // Открываем все категории
+        if (currentResponse?.categories) {
+          setOpenCategories(new Set(currentResponse.categories.map(cat => cat.name)));
+        }
+        break;
+    }
+  };
+
+  const handleInterimVoiceInput = (transcript: string) => {
+    // Показываем промежуточные результаты в поле ввода
+    setInputValue(transcript);
+  };
+
+  const handleSendMessage = async (message: string) => {
+    if (!message.trim()) return;
+    
+    const userMessage = message.trim();
     
     // Добавляем сообщение пользователя в историю
     const newUserMessage: ChatMessage = {
@@ -127,14 +186,6 @@ function HomeContent() {
       const parsed = extractJsonBlock(data.response);
       console.log('Parsed JSON:', parsed);
       
-      // Добавляем ответ ассистента в историю чата
-      const assistantMessage: ChatMessage = {
-        role: 'assistant',
-        content: cleanTextFromJson(data.response),
-        timestamp: new Date()
-      };
-      setChatHistory(prev => [...prev, assistantMessage]);
-      
       if (parsed && typeof parsed === 'object' && parsed !== null && 'categories' in parsed && 'suggestions' in parsed) {
         const parsedData = parsed as { categories: Category[]; suggestions: string[] };
         console.log('Parsed data:', parsedData);
@@ -147,6 +198,16 @@ function HomeContent() {
         
         console.log('Categories with products:', categoriesWithProducts);
         
+        // Добавляем ответ ассистента в историю чата с товарами
+        const assistantMessage: ChatMessage = {
+          role: 'assistant',
+          content: cleanTextFromJson(data.response),
+          timestamp: new Date(),
+          categories: categoriesWithProducts,
+          suggestions: parsedData.suggestions,
+        };
+        setChatHistory(prev => [...prev, assistantMessage]);
+        
         setCurrentResponse({
           userMessage: userMessage,
           text: cleanTextFromJson(data.response),
@@ -155,6 +216,17 @@ function HomeContent() {
         });
       } else {
         console.log('No valid JSON found, using demo response');
+        
+        // Добавляем ответ ассистента в историю чата с демо-товарами
+        const assistantMessage: ChatMessage = {
+          role: 'assistant',
+          content: cleanTextFromJson(data.response || 'Нет ответа от ИИ'),
+          timestamp: new Date(),
+          categories: demoAssistantResponse.categories,
+          suggestions: demoAssistantResponse.suggestions,
+        };
+        setChatHistory(prev => [...prev, assistantMessage]);
+        
         setCurrentResponse({
           ...demoAssistantResponse,
           userMessage: userMessage,
@@ -168,7 +240,9 @@ function HomeContent() {
       const errorMessage: ChatMessage = {
         role: 'assistant',
         content: 'Ошибка при обращении к ИИ',
-        timestamp: new Date()
+        timestamp: new Date(),
+        categories: demoAssistantResponse.categories,
+        suggestions: demoAssistantResponse.suggestions,
       };
       setChatHistory(prev => [...prev, errorMessage]);
       
@@ -181,6 +255,13 @@ function HomeContent() {
       setInputValue('');
       setLoading(false);
     }
+  };
+
+  const handleSend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inputValue.trim()) return;
+    
+    await handleSendMessage(inputValue);
   };
 
   // Обработка клика по идее
@@ -213,20 +294,23 @@ function HomeContent() {
       const data = await res.json();
       const parsed = extractJsonBlock(data.response);
       
-      // Добавляем ответ ассистента в историю чата
-      const assistantMessage: ChatMessage = {
-        role: 'assistant',
-        content: cleanTextFromJson(data.response),
-        timestamp: new Date()
-      };
-      setChatHistory(prev => [...prev, assistantMessage]);
-      
       if (parsed && typeof parsed === 'object' && parsed !== null && 'categories' in parsed && 'suggestions' in parsed) {
         const parsedData = parsed as { categories: Category[]; suggestions: string[] };
         const categoriesWithProducts = parsedData.categories.map((cat: Category) => ({
           ...cat,
           products: getProducts(),
         }));
+        
+        // Добавляем ответ ассистента в историю чата с товарами
+        const assistantMessage: ChatMessage = {
+          role: 'assistant',
+          content: cleanTextFromJson(data.response),
+          timestamp: new Date(),
+          categories: categoriesWithProducts,
+          suggestions: parsedData.suggestions,
+        };
+        setChatHistory(prev => [...prev, assistantMessage]);
+        
         setCurrentResponse({
           userMessage: userMessage,
           text: cleanTextFromJson(data.response),
@@ -234,6 +318,16 @@ function HomeContent() {
           suggestions: parsedData.suggestions,
         });
       } else {
+        // Добавляем ответ ассистента в историю чата с демо-товарами
+        const assistantMessage: ChatMessage = {
+          role: 'assistant',
+          content: cleanTextFromJson(data.response || 'Нет ответа от ИИ'),
+          timestamp: new Date(),
+          categories: demoAssistantResponse.categories,
+          suggestions: demoAssistantResponse.suggestions,
+        };
+        setChatHistory(prev => [...prev, assistantMessage]);
+        
         setCurrentResponse({
           ...demoAssistantResponse,
           userMessage: userMessage,
@@ -247,7 +341,9 @@ function HomeContent() {
       const errorMessage: ChatMessage = {
         role: 'assistant',
         content: 'Ошибка при обращении к ИИ',
-        timestamp: new Date()
+        timestamp: new Date(),
+        categories: demoAssistantResponse.categories,
+        suggestions: demoAssistantResponse.suggestions,
       };
       setChatHistory(prev => [...prev, errorMessage]);
       
@@ -262,43 +358,58 @@ function HomeContent() {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-gradient-to-br from-amber-50 via-orange-50 to-red-50">
-      {/* История чата */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4" ref={chatContainerRef}>
+    <div className="h-screen flex flex-col bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+      {/* Контейнер с адаптивной шириной */}
+      <div className="w-full max-w-[1152px] mx-auto h-full flex flex-col shadow-2xl bg-white/80 backdrop-blur-sm rounded-t-3xl">
+        {/* История чата */}
+        <div className="flex-1 overflow-y-auto p-2 sm:p-4 space-y-4" ref={chatContainerRef}>
         {chatHistory.map((message, index) => (
           <div key={index} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-3xl rounded-2xl px-4 py-2 ${
+            <div className={`${message.role === 'user' ? 'w-[70%] sm:w-[40%]' : 'w-full'} rounded-2xl px-3 sm:px-4 py-2 ${
               message.role === 'user' 
-                ? 'bg-orange-500 text-white' 
+                ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white' 
                 : 'text-gray-800'
             }`}>
-              <div className="text-sm mb-1 opacity-70">
+              <div className="text-xs sm:text-sm mb-1 opacity-70">
                 {message.role === 'user' ? 'Вы' : 'Зина'} • {message.timestamp.toLocaleTimeString()}
               </div>
-              <div className="whitespace-pre-line">
+              <div className="whitespace-pre-line text-sm sm:text-base">
                 {message.role === 'assistant' ? (
                   <TypewriterText text={message.content} speed={80} />
                 ) : (
                   message.content
                 )}
               </div>
-              {/* Показываем товары и идеи только в последнем сообщении ассистента */}
-              {message.role === 'assistant' && index === chatHistory.length - 1 && currentResponse && (
-                <div className="mt-4">
-                  <div className="w-full max-w-5xl">
+              {/* Показываем товары и идеи из истории сообщений */}
+              {message.role === 'assistant' && message.categories && (
+                <div className="mt-3 sm:mt-4">
+                  <div className="w-full">
                     <div className="flex-1 min-h-0 overflow-auto pr-1">
                       {/* Не показываем текст, так как он уже есть в message.content */}
-                      {currentResponse.categories && currentResponse.categories.length > 0 && (
-                        <AnimatedContent delay={1000} className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
-                          {currentResponse.categories.map((cat) => (
-                            <CategoryBlock key={cat.name} {...cat} />
+                      {message.categories && message.categories.length > 0 && (
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-6 mb-3">
+                          {message.categories.map((cat) => (
+                            <CategoryBlock 
+                              key={cat.name} 
+                              {...cat} 
+                              isOpen={openCategories.has(cat.name)}
+                              onToggle={(isOpen) => {
+                                setOpenCategories(prev => {
+                                  const newSet = new Set(prev);
+                                  if (isOpen) {
+                                    newSet.add(cat.name);
+                                  } else {
+                                    newSet.delete(cat.name);
+                                  }
+                                  return newSet;
+                                });
+                              }}
+                            />
                           ))}
-                        </AnimatedContent>
+                        </div>
                       )}
-                      {currentResponse.suggestions && currentResponse.suggestions.length > 0 && (
-                        <AnimatedContent delay={1500}>
-                          <IdeasBlock suggestions={currentResponse.suggestions} onSuggestionClick={handleSuggestionClick} />
-                        </AnimatedContent>
+                      {message.suggestions && message.suggestions.length > 0 && (
+                        <IdeasBlock suggestions={message.suggestions} onSuggestionClick={handleSuggestionClick} isVisible={true} />
                       )}
                     </div>
                   </div>
@@ -313,49 +424,47 @@ function HomeContent() {
       </div>
 
       {/* Форма ввода */}
-      <div className="flex-shrink-0 p-4 bg-white/90 shadow-lg">
+      <div className="flex-shrink-0 p-2 sm:p-4 bg-gradient-to-r from-white/95 to-gray-50/95 shadow-lg">
         <form
           onSubmit={handleSend}
-          className="w-full max-w-5xl mx-auto bg-white/90 shadow-2xl rounded-2xl flex items-center gap-3 px-6 py-4"
+          className="w-full bg-white/95 shadow-xl rounded-2xl flex items-center gap-2 sm:gap-3 px-3 sm:px-6 py-3 sm:py-4 border border-gray-200/50"
         >
-          <User className="w-6 h-6 text-orange-400 flex-shrink-0" />
+          <User className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-500 flex-shrink-0" />
           <input
-            className="flex-1 bg-[#f3f4f6] border border-orange-200 rounded-full px-4 py-2 text-base font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-orange-300 placeholder:text-gray-400 shadow"
+            className="flex-1 bg-[#f8fafc] border border-indigo-200 rounded-full px-3 sm:px-4 py-2 text-sm sm:text-base font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-300 placeholder:text-gray-400 shadow"
             placeholder="Чем вам помочь?"
             value={inputValue}
             onChange={e => setInputValue(e.target.value)}
             disabled={loading}
           />
+          <VoiceInput 
+            onTranscript={handleVoiceInput}
+            onInterimResult={handleInterimVoiceInput}
+            disabled={loading}
+          />
           <button
             type="button"
-            className="rounded-full p-2 hover:bg-orange-100 transition"
-            tabIndex={-1}
-            aria-label="Диктовка"
-          >
-            <Mic className="w-6 h-6 text-orange-400" />
-          </button>
-          <button
-            type="button"
-            className="rounded-full p-2 hover:bg-orange-100 transition relative"
+            className="rounded-full p-1.5 sm:p-2 hover:bg-indigo-100 transition relative"
             tabIndex={-1}
             aria-label="Корзина"
           >
-            <ShoppingCart className="w-6 h-6 text-orange-400" />
+            <ShoppingCart className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-500" />
             {getTotalItems() > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center font-bold">
                 {getTotalItems()}
               </span>
             )}
           </button>
           <button
             type="submit"
-            className="bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-full p-2 font-semibold shadow hover:from-orange-600 hover:to-red-600 transition disabled:opacity-50 flex items-center gap-1"
+            className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-full p-1.5 sm:p-2 font-semibold shadow hover:from-indigo-600 hover:to-purple-600 transition disabled:opacity-50 flex items-center gap-1"
             disabled={loading || !inputValue.trim()}
             aria-label="Отправить"
           >
-            <Send className="w-5 h-5" />
+            <Send className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
         </form>
+      </div>
       </div>
     </div>
   );
